@@ -9,8 +9,6 @@ import io.grpc.stub.StreamObserver;
 import java.io.IOException;
 
 public class HelloWorldServer {
-
-
     private int port = 50051;
     private Server server;
 

@@ -30,7 +30,7 @@ public class HelloWorldClient {
     public void greet(String name) {
         Helloworld.HelloRequest request = Helloworld.HelloRequest.newBuilder().setName(name).build();
         Helloworld.HelloReply response = blockingStub.sayHello(request);
-        System.out.println(response.getMessage());
+        System.out.println("-->::" + response.getMessage());
 
     }
 
