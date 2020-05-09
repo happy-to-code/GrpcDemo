@@ -1,14 +1,14 @@
 package com.tj.common.response;
 
+import cn.hutool.core.date.DateUtil;
 import com.tj.common.StatusCode;
 
-import java.util.Date;
 import java.util.HashMap;
 
 /**
  * ResponseBody构造器。
  *
- * @author zhangyifie
+ * @author zhangyifei
  */
 @SuppressWarnings("serial")
 public class RestResponse extends HashMap<String, Object> {
@@ -78,7 +78,7 @@ public class RestResponse extends HashMap<String, Object> {
     }
 
     public RestResponse setServerTime() {
-        put("serverTime", new Date());
+        put("serverTime", DateUtil.now());
         return this;
     }
 
