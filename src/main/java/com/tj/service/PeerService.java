@@ -17,13 +17,12 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
 import java.io.UnsupportedEncodingException;
-import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.tj.util.GmUtils.sm2Sign;
 import static com.tj.util.GmUtils.sm3Hash;
-import static com.tj.util.UtilTool.*;
+import static com.tj.util.UtilTool.convertPubKeyToByteString;
+import static com.tj.util.UtilTool.covent10To16Str;
 
 @Slf4j
 @Service
@@ -147,56 +146,59 @@ public class PeerService {
 //        }
 
         StoreTx storeTx = new StoreTx();
-        byte[] data = {12};
+        byte[] data = {12, 11, 24, 45, 112, 11, 124, 46, 56, 11, 24, 33, 78, 90, 26, 56};
 
         storeTx.setData(data);
 
-        ByteBuf buf = Unpooled.buffer(32);
+        ByteBuf buf = Unpooled.buffer(16);
         buf.writeBytes(storeTx.getData());
         byte[] storeArray = buf.array();
-
 
 
         long currentTime = System.currentTimeMillis() / 1000;
         log.info("currentTime::::{}", currentTime);
         TransactionHashDTO transactionHashDTO = new TransactionHashDTO();
-        transactionHashDTO.setVersion(1);
+        transactionHashDTO.setVersion(0);
         transactionHashDTO.setType(0);
         transactionHashDTO.setSubType(0);
         transactionHashDTO.setTimestamp(currentTime);
-        transactionHashDTO.setPubKey(peerPubKey);
-        transactionHashDTO.setData(new String(storeArray));
 
+        transactionHashDTO.setData(storeArray);
+        transactionHashDTO.setPubKey(peerPubKey.toByteArray());
+
+
+        log.info("new String(storeArray)------->", new String(storeArray));
         log.info("transactionHashDTO------->", transactionHashDTO.toString());
+
         // 获取transactionHashByte
         byte[] transactionHashByte = getTransactionHash(transactionHashDTO);
         // 对TransactionHash进行加密处理
-        byte[] hashBytes = sm3Hash(transactionHashByte);
-        log.info("hashBytes------>{}", hashBytes);
+        byte[] hashVal = sm3Hash(transactionHashByte);
+        log.info("hashVal------>{}", hashVal);
 
-        // 通过transactionHashByte获取签名  static byte[] sm2Encrypt(byte[] publicKey, byte[] data)
-        byte[] sign = new byte[0];
-        try {
-            sign = sm2Sign(hexToByteArray(pubKey), transactionHashByte);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        log.info("=============sign:{}", sign);
+        // 通过transactionHashByte获取签名
+//        byte[] sign = new byte[0];
+//        try {
+//            sign = sm3Hash(transactionHashByte);
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//        }
+//        log.info("=============sign:{}", sign);
 
 
         // 封装请求对象
         MyTransaction.TransactionHeader transactionHeader = MyTransaction.TransactionHeader.newBuilder()
-                .setVersion(1)
-                .setType(1)
+                .setVersion(0)
+                .setType(0)
                 .setSubType(0)
                 .setTimestamp(currentTime)
-                .setTransactionHash(ByteString.copyFrom(hashBytes))
+                .setTransactionHash(ByteString.copyFrom(hashVal))
                 .build();
 
         MyTransaction.Transaction transaction = MyTransaction.Transaction.newBuilder()
                 .setHeader(transactionHeader)
                 .setPubkey(peerPubKey)
-                .setSign(ByteString.copyFrom(sign))
+//                .setSign(ByteString.copyFrom(sign))
                 .build();
 
         MyPeer.PeerRequest request = MyPeer.PeerRequest.newBuilder()
@@ -216,13 +218,13 @@ public class PeerService {
      * @return
      */
     private byte[] getTransactionHash(TransactionHashDTO transactionHashDTO) {
-        ByteBuf buf = Unpooled.buffer(32);
+        ByteBuf buf = Unpooled.buffer();
         buf.writeInt(transactionHashDTO.getVersion());
         buf.writeInt(transactionHashDTO.getType());
         buf.writeInt(transactionHashDTO.getSubType());
         buf.writeLong(transactionHashDTO.getTimestamp());
-        buf.writeCharSequence(transactionHashDTO.getPubKey().toStringUtf8(), Charset.defaultCharset());
-        buf.writeCharSequence(transactionHashDTO.getData(), Charset.defaultCharset());
+        buf.writeBytes(transactionHashDTO.getData());
+        buf.writeBytes(transactionHashDTO.getPubKey());
         log.info("-----------------" + buf);
         return buf.array();
     }
