@@ -16,6 +16,7 @@ import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Random;
 
 public class UtilTool {
 
@@ -70,6 +71,26 @@ public class UtilTool {
                 String s = Integer.toHexString(b);
                 sb.append(s);
             }
+        }
+        return sb.toString();
+    }
+
+    // 16进制字符
+    private static final char[] HEX_CHAR = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
+
+    /**
+     * 方法一：将byte类型数组转化成16进制字符串
+     *
+     * @param bytes
+     * @return
+     * @explain 字符串拼接
+     */
+    public static String toHexString(byte[] bytes) {
+        StringBuilder sb = new StringBuilder();
+        int num;
+        for (byte b : bytes) {
+            num = b < 0 ? 256 + b : b;
+            sb.append(HEX_CHAR[num / 16]).append(HEX_CHAR[num % 16]);
         }
         return sb.toString();
     }
@@ -143,7 +164,7 @@ public class UtilTool {
         return b;
     }
 
-    public static byte[] int2Bytes1(int integer) {
+    public static byte[] int2Bytes(int integer) {
         byte[] bytes = new byte[4];
         bytes[3] = (byte) (integer >> 24);
         bytes[2] = (byte) (integer >> 16);
@@ -151,6 +172,34 @@ public class UtilTool {
         bytes[0] = (byte) integer;
 
         return bytes;
+    }
+
+    public static byte[] long2Bytes(long data) {
+        byte[] bytes = new byte[8];
+
+        bytes[0] = (byte) (data & 0xff);
+        bytes[1] = (byte) ((data >> 8) & 0xff);
+        bytes[2] = (byte) ((data >> 16) & 0xff);
+        bytes[3] = (byte) ((data >> 24) & 0xff);
+        bytes[4] = (byte) ((data >> 32) & 0xff);
+        bytes[5] = (byte) ((data >> 40) & 0xff);
+        bytes[6] = (byte) ((data >> 48) & 0xff);
+        bytes[7] = (byte) ((data >> 56) & 0xff);
+        return bytes;
+    }
+
+    private static ByteBuffer buffer = ByteBuffer.allocate(8);
+
+    //byte 数组与 long 的相互转换
+    public static byte[] longToBytes(long x) {
+        buffer.putLong(0, x);
+        return buffer.array();
+    }
+
+    public static long bytesToLong(byte[] bytes) {
+        buffer.put(bytes, 0, bytes.length);
+        buffer.flip();//need flip
+        return buffer.getLong();
     }
 
     public static int bytes2Int2(byte[] bytes) {
@@ -183,7 +232,41 @@ public class UtilTool {
         return encdeStr;
     }
 
+    public static byte[] getRandomByte(int len) {
+        if (len <= 0) {
+            return null;
+        }
+        byte[] bytes = new byte[len];
+        Random random = new Random();
+        random.nextBytes(bytes);
+        return bytes;
+    }
+
+    public static String getRandomByteStr(int len) {
+        if (len <= 0) {
+            return null;
+        }
+        StringBuilder sb = new StringBuilder("[");
+        Random random = new Random();
+        for (int i = 0; i < len; i++) {
+            sb.append((byte) random.nextInt()).append(",");
+        }
+        String substring = sb.toString().substring(0, sb.toString().lastIndexOf(","));
+
+
+        return substring + "]";
+    }
+
     public static void main(String[] args) {
+        System.out.println(getRandomByteStr(3));
+
+
+        // byte[] random = getRandomByte(16);
+        // for (byte b : random) {
+        //     System.out.print(b + " ");
+        // }
+
+
         String sha256Str = getSHA256Str("123");
         System.out.println("sha256Str = " + sha256Str);
         byte[] bytes = int2Bytes(200, 4);
@@ -191,15 +274,20 @@ public class UtilTool {
             System.out.print(aByte + " ");
         }
         System.out.println("----------");
-        byte[] bytes1 = int2Bytes1(200);
+        byte[] bytes1 = int2Bytes(200);
         for (byte b : bytes1) {
             System.out.print(b + " ");
         }
-//        String s = "2c7f6f353d828e99692bb8bf960186f218674581495b399db753c00dd636c4f0583f7a833ce67d352e7d32be5d6e3fc899d7004efe1f450fc1a078ee856a8b75";
-//        byte[] bytes = hexToByteArray(s, 16);
-//        for (byte aByte : bytes) {
-//
-//            System.out.println("bytes = " + aByte);
-//        }
+        System.out.println("----------");
+        byte[] bytes2 = longToBytes(200L);
+        for (byte b : bytes2) {
+            System.out.print(b + " ");
+        }
+        // String s = "2c7f6f353d828e99692bb8bf960186f218674581495b399db753c00dd636c4f0583f7a833ce67d352e7d32be5d6e3fc899d7004efe1f450fc1a078ee856a8b75";
+        // byte[] bytes = hexToByteArray(s, 16);
+        // for (byte aByte : bytes) {
+        //
+        //     System.out.println("bytes = " + aByte);
+        // }
     }
 }

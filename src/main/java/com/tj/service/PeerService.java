@@ -1,5 +1,6 @@
 package com.tj.service;
 
+import com.alibaba.fastjson.JSONObject;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.tj.common.StatusCode;
@@ -21,8 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static com.tj.util.GmUtils.sm3Hash;
-import static com.tj.util.UtilTool.convertPubKeyToByteString;
-import static com.tj.util.UtilTool.covent10To16Str;
+import static com.tj.util.UtilTool.*;
 
 @Slf4j
 @Service
@@ -127,35 +127,22 @@ public class PeerService {
         // 将16进制的pubKey转换成ByteString
         ByteString peerPubKey = convertPubKeyToByteString(pubKey);
 
-//        message TransactionHeader{
-//            uint32 version = 1;
-//            uint32 type = 2;
-//            uint32 subType = 3;
-//            uint64 timestamp = 4;
-//            bytes transactionHash = 5;
-//        }
-//
-//
-//        message Transaction{
-//            TransactionHeader header = 1;
-//            bytes data = 2;//交易内容
-//            bytes pubkey = 3; //发送方公钥
-//            bytes sign =4;//签名
-//            bytes result = 5;
-//            bytes extra = 6;
-//        }
-
         StoreTx storeTx = new StoreTx();
-        byte[] data = {12, 11, 24, 45, 112, 11, 124, 46, 56, 11, 24, 33, 78, 90, 26, 56};
+        String randomByteStr = getRandomByteStr(16);
 
-        storeTx.setData(data);
+        storeTx.setData(randomByteStr.getBytes());
 
-        ByteBuf buf = Unpooled.buffer(16);
-        buf.writeBytes(storeTx.getData());
+        ByteBuf buf = Unpooled.buffer(randomByteStr.length() + 1);
+        buf.writeByte(0);
+
+        String jsonString = JSONObject.toJSONString(storeTx);
+        buf.writeBytes(jsonString.getBytes());
+
+
         byte[] storeArray = buf.array();
 
-
         long currentTime = System.currentTimeMillis() / 1000;
+        // long currentTime=1589336556628L;
         log.info("currentTime::::{}", currentTime);
         TransactionHashDTO transactionHashDTO = new TransactionHashDTO();
         transactionHashDTO.setVersion(0);
@@ -166,24 +153,26 @@ public class PeerService {
         transactionHashDTO.setData(storeArray);
         transactionHashDTO.setPubKey(peerPubKey.toByteArray());
 
-
-        log.info("new String(storeArray)------->", new String(storeArray));
         log.info("transactionHashDTO------->", transactionHashDTO.toString());
 
         // 获取transactionHashByte
         byte[] transactionHashByte = getTransactionHash(transactionHashDTO);
         // 对TransactionHash进行加密处理
+
+        log.info("十六进制transactionHashByte：{}", toHexString(transactionHashByte));
+
         byte[] hashVal = sm3Hash(transactionHashByte);
         log.info("hashVal------>{}", hashVal);
+        log.info("十六进制hashVal：{}", toHexString(hashVal));
 
         // 通过transactionHashByte获取签名
-//        byte[] sign = new byte[0];
-//        try {
-//            sign = sm3Hash(transactionHashByte);
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//        }
-//        log.info("=============sign:{}", sign);
+        // byte[] sign = new byte[0];
+        // try {
+        //     sign = sm3Hash(transactionHashByte);
+        // } catch (Exception e) {
+        //     e.printStackTrace();
+        // }
+        // log.info("=============sign:{}", sign);
 
 
         // 封装请求对象
@@ -198,7 +187,8 @@ public class PeerService {
         MyTransaction.Transaction transaction = MyTransaction.Transaction.newBuilder()
                 .setHeader(transactionHeader)
                 .setPubkey(peerPubKey)
-//                .setSign(ByteString.copyFrom(sign))
+                .setData(ByteString.copyFrom(storeArray))
+                // .setSign(ByteString.copyFrom(sign))
                 .build();
 
         MyPeer.PeerRequest request = MyPeer.PeerRequest.newBuilder()
@@ -219,13 +209,29 @@ public class PeerService {
      */
     private byte[] getTransactionHash(TransactionHashDTO transactionHashDTO) {
         ByteBuf buf = Unpooled.buffer();
-        buf.writeInt(transactionHashDTO.getVersion());
-        buf.writeInt(transactionHashDTO.getType());
-        buf.writeInt(transactionHashDTO.getSubType());
-        buf.writeLong(transactionHashDTO.getTimestamp());
+        buf.writeBytes(int2Bytes(transactionHashDTO.getVersion()));
+        buf.writeBytes(int2Bytes(transactionHashDTO.getType()));
+        buf.writeBytes(int2Bytes(transactionHashDTO.getSubType()));
+        buf.writeBytes(long2Bytes(transactionHashDTO.getTimestamp()));
+
+        buf.writeBytes(int2Bytes(transactionHashDTO.getData().length));
         buf.writeBytes(transactionHashDTO.getData());
+
+        buf.writeBytes(int2Bytes(transactionHashDTO.getExtra().length));
+        buf.writeBytes(transactionHashDTO.getExtra());
+
+        buf.writeBytes(int2Bytes(transactionHashDTO.getPubKey().length));
         buf.writeBytes(transactionHashDTO.getPubKey());
-        log.info("-----------------" + buf);
-        return buf.array();
+
+        buf.writeInt(0);
+
+        byte[] bytes1 = new byte[buf.writerIndex()];
+
+        byte[] array = buf.array();
+        for (int i = 0; i < bytes1.length; i++) {
+            bytes1[i] = array[i];
+        }
+        log.info("-----------------" + bytes1);
+        return bytes1;
     }
 }
