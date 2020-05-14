@@ -123,46 +123,21 @@ public class PeerService {
     /**
      * 新增交易
      */
-    public void newTransaction() {
+    public Boolean newTransaction() {
         // 将16进制的pubKey转换成ByteString
         ByteString peerPubKey = convertPubKeyToByteString(pubKey);
 
-        StoreTx storeTx = new StoreTx();
-        String randomByteStr = getRandomByteStr(16);
+        // 获取存证交易对象字节数组
+        byte[] storeArray = getStoreTxBytes();
 
-        storeTx.setData(randomByteStr.getBytes());
-
-        ByteBuf buf = Unpooled.buffer(randomByteStr.length() + 1);
-        buf.writeByte(0);
-
-        String jsonString = JSONObject.toJSONString(storeTx);
-        buf.writeBytes(jsonString.getBytes());
-
-
-        byte[] storeArray = buf.array();
-
+        // 获取当前时间戳
         long currentTime = System.currentTimeMillis() / 1000;
-        // long currentTime=1589336556628L;
-        log.info("currentTime::::{}", currentTime);
-        TransactionHashDTO transactionHashDTO = new TransactionHashDTO();
-        transactionHashDTO.setVersion(0);
-        transactionHashDTO.setType(0);
-        transactionHashDTO.setSubType(0);
-        transactionHashDTO.setTimestamp(currentTime);
 
-        transactionHashDTO.setData(storeArray);
-        transactionHashDTO.setPubKey(peerPubKey.toByteArray());
-
-        log.info("transactionHashDTO------->", transactionHashDTO.toString());
-
-        // 获取transactionHashByte
-        byte[] transactionHashByte = getTransactionHash(transactionHashDTO);
+        // 获取transactionHash
+        byte[] transactionHashByte = getTransactionHashBytes(peerPubKey, storeArray, currentTime);
         // 对TransactionHash进行加密处理
 
-        log.info("十六进制transactionHashByte：{}", toHexString(transactionHashByte));
-
         byte[] hashVal = sm3Hash(transactionHashByte);
-        log.info("hashVal------>{}", hashVal);
         log.info("十六进制hashVal：{}", toHexString(hashVal));
 
         // 通过transactionHashByte获取签名
@@ -176,6 +151,48 @@ public class PeerService {
 
 
         // 封装请求对象
+        MyPeer.PeerRequest request = getPeerRequest(peerPubKey, storeArray, currentTime, hashVal);
+
+        // 调用接口
+        MyPeer.PeerResponse peerResponse = stub.newTransaction(request);
+
+        return peerResponse.getOk();
+    }
+
+    /**
+     * 获取transactionHash
+     *
+     * @param peerPubKey
+     * @param storeArray
+     * @param currentTime
+     * @return
+     */
+    private byte[] getTransactionHashBytes(ByteString peerPubKey, byte[] storeArray, long currentTime) {
+        TransactionHashDTO transactionHashDTO = new TransactionHashDTO();
+        transactionHashDTO.setVersion(0);
+        transactionHashDTO.setType(0);
+        transactionHashDTO.setSubType(0);
+        transactionHashDTO.setTimestamp(currentTime);
+
+        transactionHashDTO.setData(storeArray);
+        transactionHashDTO.setPubKey(peerPubKey.toByteArray());
+
+        log.info("transactionHashDTO------->", transactionHashDTO.toString());
+
+        // 获取transactionHashByte
+        return getTransactionHash(transactionHashDTO);
+    }
+
+    /**
+     * 封装请求对象
+     *
+     * @param peerPubKey
+     * @param storeArray
+     * @param currentTime
+     * @param hashVal
+     * @return
+     */
+    private MyPeer.PeerRequest getPeerRequest(ByteString peerPubKey, byte[] storeArray, long currentTime, byte[] hashVal) {
         MyTransaction.TransactionHeader transactionHeader = MyTransaction.TransactionHeader.newBuilder()
                 .setVersion(0)
                 .setType(0)
@@ -191,14 +208,33 @@ public class PeerService {
                 // .setSign(ByteString.copyFrom(sign))
                 .build();
 
-        MyPeer.PeerRequest request = MyPeer.PeerRequest.newBuilder()
+        return MyPeer.PeerRequest.newBuilder()
                 .setPubkey(peerPubKey)
                 .setPayload(transaction.toByteString())
                 .build();
+    }
 
-        MyPeer.PeerResponse peerResponse = stub.newTransaction(request);
-
-        System.out.println("peerResponse = " + peerResponse);
+    /**
+     * 获取存证交易对象字节数组
+     *
+     * @return
+     */
+    private byte[] getStoreTxBytes() {
+        // 创建存证交易对象
+        StoreTx storeTx = new StoreTx();
+        // 获取byte数组字符串
+        String randomByteStr = getRandomByteStr(16);
+        // 给对象set值
+        storeTx.setData(randomByteStr.getBytes());
+        // 将存证交易对象转换为json串
+        String jsonString = JSONObject.toJSONString(storeTx);
+        // 创建buf对象
+        ByteBuf buf = Unpooled.buffer(randomByteStr.length() + 1);
+        // buf中写入值
+        buf.writeByte(0);
+        buf.writeBytes(jsonString.getBytes());
+        // 将buf转为byte数组
+        return buf.array();
     }
 
     /**
@@ -231,7 +267,6 @@ public class PeerService {
         for (int i = 0; i < bytes1.length; i++) {
             bytes1[i] = array[i];
         }
-        log.info("-----------------" + bytes1);
         return bytes1;
     }
 }

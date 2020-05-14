@@ -41,7 +41,6 @@ public class PeerGrpcClient {
         System.out.println("-->::" + response);
 
 
-
         try {
             Msg.BlockchainNumber blockchainNumber = Msg.BlockchainNumber.parseFrom(response.getPayload());
             long number = blockchainNumber.getNumber();

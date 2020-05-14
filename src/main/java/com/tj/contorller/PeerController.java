@@ -1,6 +1,7 @@
 package com.tj.contorller;
 
 import com.google.protobuf.InvalidProtocolBufferException;
+import com.tj.common.StatusCode;
 import com.tj.common.response.RestResponse;
 import com.tj.domain.Block;
 import com.tj.service.PeerService;
@@ -48,7 +49,10 @@ public class PeerController {
      */
     @RequestMapping("newTransaction")
     public RestResponse newTransaction() {
-        peerService.newTransaction();
-        return RestResponse.success();
+        Boolean isOk = peerService.newTransaction();
+        if (isOk) {
+            return RestResponse.success();
+        }
+        return RestResponse.failure("创建交易失败！", StatusCode.SERVER_520005.value());
     }
 }
