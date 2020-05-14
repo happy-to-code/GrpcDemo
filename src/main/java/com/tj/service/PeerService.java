@@ -54,7 +54,6 @@ public class PeerService {
             throw new ServiceException(StatusCode.SERVER_500000.value(), "请求出错！");
         }
 
-
         Msg.BlockchainNumber blockchainNumber = null;
         try {
             blockchainNumber = Msg.BlockchainNumber.parseFrom(response.getPayload());
@@ -86,38 +85,6 @@ public class PeerService {
         MyBlock.Block block = MyBlock.Block.parseFrom(peerResponse.getPayload());
 
         return getReturnBlock(block);
-    }
-
-    /**
-     * 构建返回对象
-     *
-     * @param block
-     * @return
-     */
-    private Block getReturnBlock(MyBlock.Block block) {
-        Block blockPojo = new Block();
-
-        BlockHeader blockHeaderPojo = new BlockHeader();
-        blockHeaderPojo.setVersion(block.getHeader().getVersion());
-        blockHeaderPojo.setHeight(block.getHeader().getHeight());
-        blockHeaderPojo.setTimestamp(block.getHeader().getTimestamp());
-        blockHeaderPojo.setBlockHash(covent10To16Str(block.getHeader().getBlockHash().toByteArray()));
-        blockHeaderPojo.setPreviousHash(covent10To16Str(block.getHeader().getPreviousHash().toByteArray()));
-        blockHeaderPojo.setWorldStateRoot(covent10To16Str(block.getHeader().getWorldStateRoot().toByteArray()));
-        blockHeaderPojo.setTransactionRoot(covent10To16Str(block.getHeader().getTransactionRoot().toByteArray()));
-
-        blockPojo.setHeader(blockHeaderPojo);
-        blockPojo.setExtra(block.getExtra().toStringUtf8());
-
-        List<ByteString> txsList = block.getTxsList();
-        if (txsList.size() > 0) {
-            List<String> txs = new ArrayList<>(10);
-            for (ByteString bytes : txsList) {
-                txs.add(covent10To16Str(bytes.toByteArray()));
-            }
-            blockPojo.setTxs(txs);
-        }
-        return blockPojo;
     }
 
     /**
@@ -160,6 +127,39 @@ public class PeerService {
     }
 
     /**
+     * 构建返回对象
+     *
+     * @param block
+     * @return
+     */
+    private Block getReturnBlock(MyBlock.Block block) {
+        Block blockPojo = new Block();
+
+        BlockHeader blockHeaderPojo = new BlockHeader();
+        blockHeaderPojo.setVersion(block.getHeader().getVersion());
+        blockHeaderPojo.setHeight(block.getHeader().getHeight());
+        blockHeaderPojo.setTimestamp(block.getHeader().getTimestamp());
+        blockHeaderPojo.setBlockHash(covent10To16Str(block.getHeader().getBlockHash().toByteArray()));
+        blockHeaderPojo.setPreviousHash(covent10To16Str(block.getHeader().getPreviousHash().toByteArray()));
+        blockHeaderPojo.setWorldStateRoot(covent10To16Str(block.getHeader().getWorldStateRoot().toByteArray()));
+        blockHeaderPojo.setTransactionRoot(covent10To16Str(block.getHeader().getTransactionRoot().toByteArray()));
+
+        blockPojo.setHeader(blockHeaderPojo);
+        blockPojo.setExtra(block.getExtra().toStringUtf8());
+
+        List<ByteString> txsList = block.getTxsList();
+        if (txsList.size() > 0) {
+            List<String> txs = new ArrayList<>(10);
+            for (ByteString bytes : txsList) {
+                txs.add(covent10To16Str(bytes.toByteArray()));
+            }
+            blockPojo.setTxs(txs);
+        }
+        return blockPojo;
+    }
+
+
+    /**
      * 获取transactionHash
      *
      * @param peerPubKey
@@ -177,8 +177,6 @@ public class PeerService {
         transactionHashDTO.setData(storeArray);
         transactionHashDTO.setPubKey(peerPubKey.toByteArray());
 
-        log.info("transactionHashDTO------->", transactionHashDTO.toString());
-
         // 获取transactionHashByte
         return getTransactionHash(transactionHashDTO);
     }
@@ -186,11 +184,11 @@ public class PeerService {
     /**
      * 封装请求对象
      *
-     * @param peerPubKey
-     * @param storeArray
-     * @param currentTime
-     * @param hashVal
-     * @return
+     * @param peerPubKey  链上的公钥
+     * @param storeArray  存证交易对象字节数组
+     * @param currentTime 当前时间
+     * @param hashVal     加密后的byte数组
+     * @return MyPeer.PeerRequest
      */
     private MyPeer.PeerRequest getPeerRequest(ByteString peerPubKey, byte[] storeArray, long currentTime, byte[] hashVal) {
         MyTransaction.TransactionHeader transactionHeader = MyTransaction.TransactionHeader.newBuilder()

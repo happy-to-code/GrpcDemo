@@ -1,4 +1,4 @@
-package com.tj.service;
+package com.tj.util;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
