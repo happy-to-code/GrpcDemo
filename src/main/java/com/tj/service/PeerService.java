@@ -21,6 +21,7 @@ import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.tj.util.GmUtils.sm2Sign;
 import static com.tj.util.GmUtils.sm3Hash;
 import static com.tj.util.UtilTool.*;
 
@@ -32,6 +33,9 @@ public class PeerService {
 
     @Value("${peer.pubKey}")
     private String pubKey;
+
+    @Value("${peer.privateKey}")
+    private String privateKey;
 
 
     /**
@@ -107,18 +111,18 @@ public class PeerService {
         byte[] hashVal = sm3Hash(transactionHashByte);
         log.info("十六进制hashVal：{}", toHexString(hashVal));
 
-        // 通过transactionHashByte获取签名
-        // byte[] sign = new byte[0];
-        // try {
-        //     sign = sm3Hash(transactionHashByte);
-        // } catch (Exception e) {
-        //     e.printStackTrace();
-        // }
-        // log.info("=============sign:{}", sign);
+        // 通过transactionHashByte获取签名 TODO
+        byte[] sm2SignBytes = null;
+        try {
+            sm2SignBytes = sm2Sign(privateKey.getBytes(), transactionHashByte);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        log.info("sm2SignBytes转为16进制:{}", toHexString(sm2SignBytes));
 
 
         // 封装请求对象
-        MyPeer.PeerRequest request = getPeerRequest(peerPubKey, storeArray, currentTime, hashVal);
+        MyPeer.PeerRequest request = getPeerRequest(peerPubKey, storeArray, currentTime, hashVal, sm2SignBytes);
 
         // 调用接口
         MyPeer.PeerResponse peerResponse = stub.newTransaction(request);
@@ -184,13 +188,14 @@ public class PeerService {
     /**
      * 封装请求对象
      *
-     * @param peerPubKey  链上的公钥
-     * @param storeArray  存证交易对象字节数组
-     * @param currentTime 当前时间
-     * @param hashVal     加密后的byte数组
+     * @param peerPubKey   链上的公钥
+     * @param storeArray   存证交易对象字节数组
+     * @param currentTime  当前时间
+     * @param hashVal      加密后的byte数组
+     * @param sm2SignBytes
      * @return MyPeer.PeerRequest
      */
-    private MyPeer.PeerRequest getPeerRequest(ByteString peerPubKey, byte[] storeArray, long currentTime, byte[] hashVal) {
+    private MyPeer.PeerRequest getPeerRequest(ByteString peerPubKey, byte[] storeArray, long currentTime, byte[] hashVal, byte[] sm2SignBytes) {
         MyTransaction.TransactionHeader transactionHeader = MyTransaction.TransactionHeader.newBuilder()
                 .setVersion(0)
                 .setType(0)
@@ -203,7 +208,7 @@ public class PeerService {
                 .setHeader(transactionHeader)
                 .setPubkey(peerPubKey)
                 .setData(ByteString.copyFrom(storeArray))
-                // .setSign(ByteString.copyFrom(sign))
+                .setSign(ByteString.copyFrom(sm2SignBytes))
                 .build();
 
         return MyPeer.PeerRequest.newBuilder()
